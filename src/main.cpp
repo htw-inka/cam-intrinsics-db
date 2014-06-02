@@ -21,6 +21,8 @@ float square_size = 0.0f;
 char device[DEVICE_STRLEN];
 bool all_devices = true;
 
+Size board_size(9,6);   // number of *inner* corners per a chessboard row and column
+
 bool status_ok = true;
 
 vector<vector<Point2f> > imagePoints;
@@ -39,6 +41,21 @@ void printHelp() {
 void err(const char *msg) {
     cerr << "ERROR: " << msg << endl;
     status_ok = false;
+}
+
+bool calibrate_with_img(Mat& img) {
+    vector<Point2f> pointBuf;
+
+    bool found = findChessboardCorners(img, board_size, pointBuf,
+                                       CV_CALIB_CB_ADAPTIVE_THRESH
+                                       | CV_CALIB_CB_FAST_CHECK
+                                       | CV_CALIB_CB_NORMALIZE_IMAGE);
+                                       
+    if (!found) {
+        return false;
+    }
+    
+    return true;
 }
 
 void calibrate_device(const char *device) {
@@ -65,6 +82,17 @@ void calibrate_device(const char *device) {
         sprintf(file, "%s/%s", path, dir_item->d_name);
         
         cout << "> working with file '" << file << "'" << endl;
+        
+        Mat img = imread(file, CV_LOAD_IMAGE_COLOR);
+        
+        if (!img.data || img.rows == 0 || img.cols == 0) {
+            err("image could not be loaded");
+            return;
+        }
+        
+        bool res = calibrate_with_img(img);
+        
+        cout << ">> calibration: " << (res ? "ok" : "failed") << endl;
     }
 }
 
@@ -77,7 +105,7 @@ void calibrate_all() {
     
     struct dirent *dir_item;
     
-    while ((dir_item = readdir(dir)) != NULL) {
+    while (status_ok && ((dir_item = readdir(dir)) != NULL)) {
         if (!dir_item->d_name
          || dir_item->d_name[0] == '.'
          || dir_item->d_type != DT_DIR)
