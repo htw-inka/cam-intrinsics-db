@@ -1,6 +1,10 @@
 CC = g++
 CFLAGS = -I/opt/local/include
-LDFLAGS = -L/opt/local/lib
+LDFLAGS = -L/opt/local/lib \
+	  -lopencv_core \
+	  -lopencv_imgproc \
+	  -lopencv_calib3d \
+	  -lopencv_highgui
 
 OBJ = main.o
 

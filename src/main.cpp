@@ -14,11 +14,16 @@ using namespace std;
 
 #define DEVICE_STRLEN   255
 
-static float square_size = 0.0f;
-static char device[DEVICE_STRLEN];
-static bool all_devices = true;
+float square_size = 0.0f;
+char device[DEVICE_STRLEN];
+bool all_devices = true;
 
-static void printHelp() {
+vector<vector<Point2f> > imagePoints;
+Mat cameraMatrix, distCoeffs;
+Size imageSize;
+
+
+void printHelp() {
     cout << "required arguments:" << endl;
     cout << "- square size in meters" << endl;
     cout << endl;
