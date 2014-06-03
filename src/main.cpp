@@ -9,10 +9,10 @@
  */
 
 #include <iostream>
-#include <sstream>
-#include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <algorithm>
 #include <sys/types.h>
 #include <dirent.h>
 
@@ -32,6 +32,11 @@ using namespace std;
 
 const char ESC_KEY = 27;
 
+enum file_type {
+    UNKNOWN,
+    PIC,
+    VID
+};
 
 /** GLOBAL VARS **/
 
@@ -54,6 +59,10 @@ vector<Mat> undistort_imgs;
 Mat cam_mat, dist_mat;
 double avg_reproj_err = 0.0;
 Size img_size(0, 0);
+
+vector<string> file_ext_pic;
+vector<string> file_ext_vid;
+
 
 
 /** FUNCTIONS **/
@@ -81,6 +90,30 @@ void print_mat(const Mat &m) {
         
         cout << endl;
     }
+}
+
+enum file_type guess_type(const char *file) {
+    // find extension
+    const char *last_dot = strrchr(file, '.');
+    const int ext_len = strlen(file) - (last_dot - file + 1);
+                
+    char ext[5];
+    strncpy(ext, last_dot + 1, ext_len);
+    ext[ext_len] = '\0';
+    
+    // make lower case
+    for (int i = 0; i < ext_len; ++i) ext[i] = tolower(ext[i]);
+
+    // try to find in extension vectors
+    vector<string>::iterator found_type = std::find(file_ext_pic.begin(), file_ext_pic.end(), string(ext));
+    
+    if (found_type != file_ext_pic.end()) return PIC;
+    
+    found_type = std::find(file_ext_vid.begin(), file_ext_vid.end(), string(ext));
+    
+    if (found_type != file_ext_vid.end()) return VID;
+    
+    return UNKNOWN;
 }
 
 bool write_output(const char *file) {
@@ -159,6 +192,28 @@ bool run_calibration_with_data(vector<vector<Point2f> > pts, double *reproj_err)
     return checkRange(cam_mat) && checkRange(dist_mat);
 }
 
+bool process_img(Mat &img) {
+    if (!img.data || img.rows == 0 || img.cols == 0) return false;
+        
+    if (find_corners_in_img(img)) {
+        undistort_imgs.push_back(img);
+        
+        if (graphical_disp) {
+            imshow("image view", img);
+            if (interactive) waitKey(0);
+        }
+    } else {
+        return false;
+    }
+    
+    return true;
+}
+
+bool process_vid(const char *file, int *num_img, int *num_img_ok) {
+
+    return true;
+}
+
 void calibrate_device(const char *device) {
     // initialize
     img_size = Size(0, 0);
@@ -190,28 +245,27 @@ void calibrate_device(const char *device) {
         sprintf(file, "%s/%s", path, dir_item->d_name);
         
         cout << "> working with file '" << file << "'" << endl;
+
+        if (guess_type(file) == PIC) {
+            cout << ">> image file" << endl;
+            
+            num_img++;
         
-        num_img++;
+            Mat img = imread(file, CV_LOAD_IMAGE_COLOR);
+            bool res = process_img(img);
         
-        Mat img = imread(file, CV_LOAD_IMAGE_COLOR);
+            cout << ">> finding chessboard corners: " << (res ? "ok" : "failed") << endl;
         
-        if (!img.data || img.rows == 0 || img.cols == 0) {
-            err("image could not be loaded");
-            break;
-        }
-        
-        bool res = find_corners_in_img(img);
-        
-        cout << ">> finding chessboard corners: " << (res ? "ok" : "failed") << endl;
-        
-        if (res) {
-            num_img_ok++;
-            undistort_imgs.push_back(img);
-        
-            if (graphical_disp) {
-                imshow("image view", img);
-                if (interactive) waitKey(0);
+            if (res) num_img_ok++;
+        } else if (guess_type(file) == VID) {
+            cout << ">> video file" << endl;
+            
+            if (!process_vid(file, &num_img, &num_img_ok)) {
+                cout << ">> error processing video file" << endl;
             }
+        } else {
+            cout << ">> unknown file type" << endl;
+            continue;
         }
     }
         
@@ -311,6 +365,17 @@ void init() {
             std_obj_pts.push_back(Point3f((float)j * square_size, (float)i * square_size, 0));
         }
     }
+    
+    file_ext_pic.clear();
+    file_ext_pic.push_back("jpg");
+    file_ext_pic.push_back("jpeg");
+    file_ext_pic.push_back("png");
+    
+    file_ext_vid.clear();
+    file_ext_vid.push_back("mgp");
+    file_ext_vid.push_back("mpeg");
+    file_ext_vid.push_back("avi");
+    file_ext_vid.push_back("mov");
 }
 
 int main(int argc, char *argv[]) {

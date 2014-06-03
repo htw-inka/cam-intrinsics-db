@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -I/opt/local/include
+CFLAGS = -Wall -I/opt/local/include
 LDFLAGS = -L/opt/local/lib \
 	  -lopencv_core \
 	  -lopencv_imgproc \
