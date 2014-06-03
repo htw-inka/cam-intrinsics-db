@@ -1,3 +1,13 @@
+/**
+ * Automatic camera intrinsics finder.
+ *
+ * Markus Konrad <post (*AT*) mkonrad (*DOT*) net>, June 2014.
+ *
+ * Contains many code parts from
+ * opencv/samples/tutorial_code/calib3d/camera_calibration/camera_calibration.cpp
+ * See http://docs.opencv.org/trunk/doc/tutorials/calib3d/camera_calibration/camera_calibration.html
+ */
+
 #include <iostream>
 #include <sstream>
 #include <time.h>
@@ -14,12 +24,21 @@
 using namespace cv;
 using namespace std;
 
+
+/** DEFINES **/
+
 #define DEVICE_STRLEN        256
 #define DEVICE_PATH_STRLEN   512
+
+
+/** GLOBAL VARS **/
 
 float square_size = 0.0f;
 char device[DEVICE_STRLEN];
 bool all_devices = true;
+
+bool graphical_disp = false;
+bool interactive = false;
 
 Size board_size(9,6);   // number of *inner* corners per a chessboard row and column
 
@@ -30,12 +49,14 @@ Mat cameraMatrix, distCoeffs;
 Size imageSize;
 
 
+/** FUNCTIONS **/
+
 void printHelp() {
-    cout << "required arguments:" << endl;
-    cout << "- square size in meters" << endl;
-    cout << endl;
-    cout << "optional arguments:" << endl;
-    cout << "- device" << endl;
+    cout << "usage:" << endl;
+    cout << "cam_intrinsics-db [-g|i] <square size in meters> [device]" << endl;
+    cout << " use '-g' for graphical output" << endl;
+    cout << " use '-i' for *interactive* graphical output" << endl;
+    cout << " optionally specify a 'device' for which calibration photos or videos exist in the 'device_data/' folder" << endl;
 }
 
 void err(const char *msg) {
@@ -55,6 +76,15 @@ bool calibrate_with_img(Mat& img) {
         return false;
     }
     
+    Mat imgGray;
+    cvtColor(img, imgGray, COLOR_BGR2GRAY);
+    cornerSubPix(imgGray, pointBuf, Size(11,11),
+                 Size(-1,-1), TermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 30, 0.1));
+
+    if (graphical_disp) {
+        drawChessboardCorners(img, board_size, Mat(pointBuf), found);
+    }
+    
     return true;
 }
 
@@ -62,7 +92,7 @@ void calibrate_device(const char *device) {
     cout << "calibrating device '" << device << "'..." << endl;
     
     char path[DEVICE_PATH_STRLEN];
-    sprintf(path, "./device_photos/%s", device);
+    sprintf(path, "./device_data/%s", device);
     
     DIR *dir = opendir(path);
     if (dir == NULL) {
@@ -93,11 +123,16 @@ void calibrate_device(const char *device) {
         bool res = calibrate_with_img(img);
         
         cout << ">> calibration: " << (res ? "ok" : "failed") << endl;
+        
+        if (res && graphical_disp) {
+            imshow("image view", img);
+            if (interactive) waitKey(0);
+        }
     }
 }
 
 void calibrate_all() {
-    DIR *dir = opendir("./device_photos");
+    DIR *dir = opendir("./device_data");
     if (dir == NULL) {
         err("could not open photos directory");
         return;
@@ -124,13 +159,31 @@ void write_output() {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {
+    if (argc < 2 || strlen(argv[1]) <= 1) {
         printHelp();
-        
         return 1;
     }
     
-    square_size = (float)strtod(argv[1], NULL);
+    int params_idx = 1;
+        
+    if (strlen(argv[params_idx]) == 2 && argv[params_idx][0] == '-') {    // optional flag parameter
+        if (argv[params_idx][1] == 'g') {
+            graphical_disp = true;
+        } else if (argv[params_idx][1] == 'i') {
+            graphical_disp = true;
+            interactive = true;
+        }
+        
+        if (argc <= params_idx + 1) {
+            printHelp();
+            return 1;
+        }
+        
+        params_idx++;
+    }
+    
+    square_size = (float)strtod(argv[params_idx], NULL);
+    params_idx++;
     
     if (square_size <= 0.0f) {
         err("unable to parse first argument as square size");
@@ -139,8 +192,8 @@ int main(int argc, char *argv[]) {
         return 2;
     }
     
-    if (argc >= 3) {
-        strncpy(device, argv[2], DEVICE_STRLEN);
+    if (argc > params_idx) {
+        strncpy(device, argv[params_idx], DEVICE_STRLEN);
         all_devices = false;
     }
     
@@ -161,7 +214,7 @@ int main(int argc, char *argv[]) {
     } else {
         cerr << "calibration failed" << endl;
     
-        return 3;
+        return 2;
     }
 
     return 0;
