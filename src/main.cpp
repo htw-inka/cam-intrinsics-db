@@ -25,10 +25,12 @@ using namespace cv;
 using namespace std;
 
 
-/** DEFINES **/
+/** DEFINES AND CONSTANTS **/
 
 #define DEVICE_STRLEN        256
 #define DEVICE_PATH_STRLEN   512
+
+const char ESC_KEY = 27;
 
 
 /** GLOBAL VARS **/
@@ -46,6 +48,8 @@ bool status_ok = true;
 
 vector<vector<Point2f> > img_pts;
 vector<Point3f> std_obj_pts;
+
+vector<Mat> undistort_imgs;
 
 Mat cam_mat, dist_mat;
 Size img_size(0, 0);
@@ -95,9 +99,10 @@ bool find_corners_in_img(Mat& img) {
     {
         err("all images of one device must have the same dimension");
         return false;
+    } else if (img_size.width == 0 && img_size.height == 0) {
+        img_size = new_img_size;
     }
     
-    img_size = new_img_size;
     img_pts.push_back(point_buf);
     
     return true;
@@ -124,9 +129,11 @@ bool run_calibration_with_data(vector<vector<Point2f> > pts, double *reproj_err)
 }
 
 void calibrate_device(const char *device) {
-    cout << "calibrating device '" << device << "'..." << endl;
-    
+    // initialize
     img_size = Size(0, 0);
+    undistort_imgs.clear();
+
+    cout << "calibrating device '" << device << "'..." << endl;
     
     char path[DEVICE_PATH_STRLEN];
     sprintf(path, "./device_data/%s", device);
@@ -168,6 +175,7 @@ void calibrate_device(const char *device) {
         
         if (res) {
             num_img_ok++;
+            undistort_imgs.push_back(img);
         
             if (graphical_disp) {
                 imshow("image view", img);
@@ -176,7 +184,8 @@ void calibrate_device(const char *device) {
         }
     }
         
-    cout << "using " << num_img_ok << " out of " << num_img << " for calibration" << endl;
+    cout << "using " << num_img_ok << " out of " << num_img << " images for calibration" << endl;
+    cout << "image size: " << img_size.width << "x" << img_size.height << " pixels" << endl;
     
     if (num_img_ok <= 0 || img_pts.size() <= 0) {
         err("no chessboard corners found for calibration");
@@ -195,6 +204,35 @@ void calibrate_device(const char *device) {
     }
     
     cout << "calibration succeeded with reprojection error " << reproj_err << endl;
+    
+    if (graphical_disp) {
+        cout << "showing undistorted images" << endl;
+    
+        Mat uimg, map1, map2;
+        initUndistortRectifyMap(cam_mat, dist_mat, Mat(),
+            getOptimalNewCameraMatrix(cam_mat, dist_mat, img_size, 1, img_size, 0),
+            img_size, CV_16SC2, map1, map2);
+    
+        int uimg_nr = 0;
+        
+        for (vector<Mat>::iterator it = undistort_imgs.begin();
+             it != undistort_imgs.end();
+             ++it)
+        {
+            cout << "image #" << uimg_nr << endl;
+            
+            remap(*it, uimg, map1, map2, INTER_LINEAR);
+            imshow("image view (undistorted)", uimg);
+            
+            if (interactive) {
+                char c = (char)waitKey();
+                if (c  == ESC_KEY || c == 'q' || c == 'Q')
+                    break;
+            }
+            
+            uimg_nr++;
+        }
+    }
 }
 
 void calibrate_all() {
