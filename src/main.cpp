@@ -52,6 +52,7 @@ vector<Point3f> std_obj_pts;
 vector<Mat> undistort_imgs;
 
 Mat cam_mat, dist_mat;
+double avg_reproj_err = 0.0;
 Size img_size(0, 0);
 
 
@@ -68,6 +69,36 @@ void printHelp() {
 void err(const char *msg) {
     cerr << "ERROR: " << msg << endl;
     status_ok = false;
+}
+
+void print_mat(const Mat &m) {
+    for (int y = 0; y < m.rows; y++) {
+        for (int x = 0; x < m.cols; x++) {
+            cout << m.at<double>(y, x);
+            
+            if (x < m.cols - 1) cout << " ";
+        }
+        
+        cout << endl;
+    }
+}
+
+bool write_output(const char *file) {
+    FileStorage fs(file, FileStorage::WRITE);
+    
+    bool ok = false;
+    
+    if (fs.isOpened()) {
+        fs << "Camera_Matrix" << cam_mat;
+        fs << "Distortion_Coefficients" << dist_mat;
+        fs << "Avg_Reprojection_Error" << avg_reproj_err;
+        
+        ok = true;
+    }
+    
+    fs.release();
+    
+    return ok;
 }
 
 bool find_corners_in_img(Mat& img) {
@@ -202,8 +233,14 @@ void calibrate_device(const char *device) {
         cout << "calibration failed";
         return;
     }
-    
+        
     cout << "calibration succeeded with reprojection error " << reproj_err << endl;
+    
+    cout << "camera matrix:" << endl;
+    print_mat(cam_mat);
+    
+    cout << "distortion coefficients:" << endl;
+    print_mat(dist_mat);
     
     if (graphical_disp) {
         cout << "showing undistorted images" << endl;
@@ -233,6 +270,16 @@ void calibrate_device(const char *device) {
             uimg_nr++;
         }
     }
+    
+    avg_reproj_err = reproj_err;
+    
+    char file_out[DEVICE_PATH_STRLEN];
+    sprintf(file_out, "./database/%s.xml", device);
+    cout << "writing output to " << file_out << endl;
+    
+    if (!write_output(file_out)) {
+        err("the result could not be written to the output file");
+    }
 }
 
 void calibrate_all() {
@@ -251,16 +298,9 @@ void calibrate_all() {
             continue;
     
         calibrate_device(dir_item->d_name);
-        
-//        cout << "file: " << dir_item->d_name << endl;
-//        cout << " is folder: " << (dir_item->d_type == DT_DIR) << endl;
     }
     
     closedir(dir);
-}
-
-void write_output() {
-
 }
 
 void init() {
@@ -328,11 +368,11 @@ int main(int argc, char *argv[]) {
     }
 
     if (status_ok) {
-        write_output();
+        cout << "done" << endl;
     } else {
         cerr << "calibration failed" << endl;
     
-        return 2;
+        return 3;
     }
 
     return 0;
