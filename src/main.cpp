@@ -27,8 +27,12 @@ using namespace std;
 
 /** DEFINES AND CONSTANTS **/
 
-#define DEVICE_STRLEN        256
-#define DEVICE_PATH_STRLEN   512
+#define VID_USE_NUM_FRAMES      10
+#define VID_BAD_FRAME_ATTEMPTS  5
+#define VID_BAD_FRAME_SKIP      5
+
+#define DEVICE_STRLEN           256
+#define DEVICE_PATH_STRLEN      512
 
 const char ESC_KEY = 27;
 
@@ -43,6 +47,8 @@ enum file_type {
 float square_size = 0.0f;
 char device[DEVICE_STRLEN];
 bool all_devices = true;
+
+VideoCapture vid_cap;
 
 bool graphical_disp = false;
 bool interactive = false;
@@ -210,6 +216,47 @@ bool process_img(Mat &img) {
 }
 
 bool process_vid(const char *file, int *num_img, int *num_img_ok) {
+    vid_cap.open(file);
+
+    if (!vid_cap.isOpened()) return false;
+    
+    const int num_frames = (int)vid_cap.get(CV_CAP_PROP_FRAME_COUNT);
+    
+    if (num_frames < VID_USE_NUM_FRAMES) {
+        cout << "video does not contain enough frames" << endl;
+        return false;
+    }
+    
+    cout << ">>> number of frames in the video: " << num_frames << endl;
+    
+    const int skip_frames = num_frames / VID_USE_NUM_FRAMES;
+    
+    int bad_frame_attempt = 0;
+    *num_img = VID_USE_NUM_FRAMES;
+    *num_img_ok = 0;
+    for (int frame_step = 0; frame_step < VID_USE_NUM_FRAMES; ) {
+        int frame_pos = frame_step * skip_frames + bad_frame_attempt * VID_BAD_FRAME_SKIP;
+        vid_cap.set(CV_CAP_PROP_POS_FRAMES, (double)(frame_pos));
+        
+        Mat img;
+        vid_cap >> img;
+        
+        if (img.empty()) continue;
+        
+        cout << ">>> got video frame at frame pos " << frame_pos  << endl;
+        
+        bool ok = process_img(img);
+        
+        if (!ok && bad_frame_attempt < VID_BAD_FRAME_ATTEMPTS) {
+            bad_frame_attempt++;
+            cout << ">>> bad frame, retrying with other frame" << endl;
+        } else {
+            bad_frame_attempt = 0;  // reset
+            frame_step++;
+        }
+        
+        if (ok) (*num_img_ok)++;
+    }
 
     return true;
 }

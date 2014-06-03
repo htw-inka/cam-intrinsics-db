@@ -8,5 +8,6 @@
 
 ## TODO
 
+* comments
 * add board size as optional program argument
-* video support
+* add number of frames to use from videos as optional program argument
