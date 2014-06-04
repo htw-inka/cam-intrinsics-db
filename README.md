@@ -59,6 +59,8 @@ If you have a camera that you calibrated with this tool, please submit your data
 
 Note that you can only use chessboard grids for calibration. You can download and print out such a grid from the *assets* folder.
 
+Also note, that your calibration data set should be smaller than 50MiB.
+
 ## TODO
 
 * add the following as optional program arguments:
