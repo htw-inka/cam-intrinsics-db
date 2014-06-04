@@ -50,7 +50,7 @@ bool all_devices = true;
 
 VideoCapture vid_cap;
 
-bool graphical_disp = false;
+bool disp_first_frame = false;
 bool interactive = false;
 
 Size board_size(9,6);   // number of *inner* corners per a chessboard row and column
@@ -76,8 +76,8 @@ vector<string> file_ext_vid;
 void printHelp() {
     cout << "usage:" << endl;
     cout << "cam_intrinsics-db [-g|i] <square size in meters> [device]" << endl;
-    cout << " use '-g' for graphical output" << endl;
-    cout << " use '-i' for *interactive* graphical output" << endl;
+    cout << " use '-g' for graphical output (shows original and undistorted first frame)" << endl;
+    cout << " use '-i' for *interactive* graphical output (step through all frames)" << endl;
     cout << " optionally specify a 'device' for which calibration photos or videos exist in the 'device_data/' folder" << endl;
 }
 
@@ -140,7 +140,7 @@ bool write_output(const char *file) {
     return ok;
 }
 
-bool find_corners_in_img(Mat& img) {
+bool find_corners_in_img(Mat& img, bool is_first_frame) {
     vector<Point2f> point_buf;
 
     bool found = findChessboardCorners(img, board_size, point_buf,
@@ -157,7 +157,7 @@ bool find_corners_in_img(Mat& img) {
     cornerSubPix(img_gray, point_buf, Size(11,11),
                  Size(-1,-1), TermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 30, 0.1));
 
-    if (graphical_disp) {
+    if ((disp_first_frame && is_first_frame) || interactive) {
         drawChessboardCorners(img, board_size, Mat(point_buf), found);
     }
     
@@ -198,13 +198,13 @@ bool run_calibration_with_data(vector<vector<Point2f> > pts, double *reproj_err)
     return checkRange(cam_mat) && checkRange(dist_mat);
 }
 
-bool process_img(Mat &img) {
+bool process_img(Mat &img, bool is_first_frame) {
     if (!img.data || img.rows == 0 || img.cols == 0) return false;
         
-    if (find_corners_in_img(img)) {
+    if (find_corners_in_img(img, is_first_frame)) {
         undistort_imgs.push_back(img);
         
-        if (graphical_disp) {
+        if ((disp_first_frame && is_first_frame) || interactive) {
             imshow("image view", img);
             if (interactive) waitKey(0);
         }
@@ -245,7 +245,7 @@ bool process_vid(const char *file, int *num_img, int *num_img_ok) {
         
         cout << ">>> got video frame at frame pos " << frame_pos  << endl;
         
-        bool ok = process_img(img);
+        bool ok = process_img(img, *num_img_ok == 0);
         
         if (!ok && bad_frame_attempt < VID_BAD_FRAME_ATTEMPTS) {
             bad_frame_attempt++;
@@ -296,13 +296,12 @@ void calibrate_device(const char *device) {
         if (guess_type(file) == PIC) {
             cout << ">> image file" << endl;
             
-            num_img++;
-        
             Mat img = imread(file, CV_LOAD_IMAGE_COLOR);
-            bool res = process_img(img);
+            bool res = process_img(img, num_img_ok == 0);
         
             cout << ">> finding chessboard corners: " << (res ? "ok" : "failed") << endl;
         
+            num_img++;
             if (res) num_img_ok++;
         } else if (guess_type(file) == VID) {
             cout << ">> video file" << endl;
@@ -343,7 +342,7 @@ void calibrate_device(const char *device) {
     cout << "distortion coefficients:" << endl;
     print_mat(dist_mat);
     
-    if (graphical_disp) {
+    if (disp_first_frame || interactive) {
         cout << "showing undistorted images" << endl;
     
         Mat uimg, map1, map2;
@@ -362,9 +361,11 @@ void calibrate_device(const char *device) {
             remap(*it, uimg, map1, map2, INTER_LINEAR);
             imshow("image view (undistorted)", uimg);
             
+            if (disp_first_frame) break;
+            
             if (interactive) {
                 char c = (char)waitKey();
-                if (c  == ESC_KEY || c == 'q' || c == 'Q')
+                if (disp_first_frame || c  == ESC_KEY || c == 'q' || c == 'Q')
                     break;
             }
             
@@ -435,9 +436,8 @@ int main(int argc, char *argv[]) {
         
     if (strlen(argv[params_idx]) == 2 && argv[params_idx][0] == '-') {    // optional flag parameter
         if (argv[params_idx][1] == 'g') {
-            graphical_disp = true;
+            disp_first_frame = true;
         } else if (argv[params_idx][1] == 'i') {
-            graphical_disp = true;
             interactive = true;
         }
         
@@ -486,6 +486,8 @@ int main(int argc, char *argv[]) {
     
         return 3;
     }
+    
+    if (disp_first_frame) waitKey(0);
 
     return 0;
 }
