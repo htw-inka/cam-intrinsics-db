@@ -62,9 +62,9 @@ Note that you can only use chessboard grids for calibration. You can download an
 ## TODO
 
 * add the following as optional program arguments:
-** board size
-** number of frames to use from videos
-** calibrateCamera parameters
+ * board size
+ * number of frames to use from videos
+ * calibrateCamera parameters
 
 ## LICENSE
 
