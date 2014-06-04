@@ -31,7 +31,7 @@ using namespace std;
 
 /** DEFINES AND CONSTANTS **/
 
-#define VID_USE_NUM_FRAMES      10  // number of frames to use from videos
+#define VID_USE_NUM_FRAMES      25  // number of frames to use from videos
 #define VID_BAD_FRAME_ATTEMPTS  5   // number of attempts when no chessboard could be detected in a video frame
 #define VID_BAD_FRAME_SKIP      5   // number of frames to skip in the above event
 
@@ -216,7 +216,11 @@ bool run_calibration_with_data(vector<vector<Point2f> > pts, double *reproj_err)
     
     //Find intrinsic and extrinsic camera parameters
     *reproj_err = calibrateCamera(obj_pts, img_pts, img_size, cam_mat,
-                                  dist_mat, rvecs, tvecs, CV_CALIB_FIX_K4|CV_CALIB_FIX_K5);
+                                  dist_mat, rvecs, tvecs,
+                                  /*CV_CALIB_FIX_PRINCIPAL_POINT
+                                  |*/ CV_CALIB_FIX_ASPECT_RATIO
+                                  | CV_CALIB_FIX_K4
+                                  | CV_CALIB_FIX_K5);
     
     // matrices must be ok
     return checkRange(cam_mat) && checkRange(dist_mat);
@@ -585,7 +589,10 @@ int main(int argc, char *argv[]) {
         return 3;
     }
     
-    if (disp_first_frame) waitKey(0);
+    if (disp_first_frame) {
+        cout << "select one of the spawned windows and press a key to close" << endl;
+        waitKey(0);
+    }
 
     return 0;
 }

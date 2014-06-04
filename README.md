@@ -22,5 +22,7 @@ OpenCV also contains [source code for a camera calibration tool](http://docs.ope
 
 ## TODO
 
-* add board size as optional program argument
-* add number of frames to use from videos as optional program argument
+* add the following as optional program argument:
+** board size
+** number of frames to use from videos
+** calibrateCamera parameters
