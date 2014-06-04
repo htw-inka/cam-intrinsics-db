@@ -2,7 +2,7 @@
 
 *Markus Konrad <konrad@htw-berlin.de>, June 2014*
 
-*INKA Research Group, HTW Berlin - http://inka.htw-berlin.de*
+*INKA Research Group / Project MINERVA, HTW Berlin - http://inka.htw-berlin.de/inka/projekte/minerva/*
 
 This repository contains a simple [OpenCV](http://opencv.org)-based automatic camera calibration tool and a database containing XML files with camera matrix and distortion coefficients for different devices that have so far been determined using this tool.
 
@@ -65,3 +65,7 @@ Note that you can only use chessboard grids for calibration. You can download an
 ** board size
 ** number of frames to use from videos
 ** calibrateCamera parameters
+
+## LICENSE
+
+See *LICENSE* file.
