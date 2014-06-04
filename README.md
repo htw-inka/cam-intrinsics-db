@@ -6,7 +6,11 @@ A camera's matrix and distortion coefficients is especially important in Augment
 
 For more information, see the excellent [OpenCV tutorial on camera calibration](http://docs.opencv.org/trunk/doc/tutorials/calib3d/camera_calibration/camera_calibration.html).
 
-OpenCV also contains [source code for a camera calibration tool](http://docs.opencv.org/trunk/_downloads/camera_calibration.cpp), which is also the inspiration for this tool (and parts of it's code have been directly used here, too). However, for most cases it is rather bloated and more difficult to use.
+OpenCV also contains [source code for a camera calibration tool](http://docs.opencv.org/trunk/_downloads/camera_calibration.cpp), which is also the inspiration for this tool (and parts of it's code have been directly used here, too). However, for most cases it is rather bloated and more difficult to use, because it requires to write a XML file with settings first. The presented tool here can be controlled completely with program arguments (see "Usage" below). It can also run "headless", meaning without graphical output, which speeds up the whole process.
+
+## Tool usage
+
+## Database
 
 ## Dependencies
 
@@ -18,6 +22,5 @@ OpenCV also contains [source code for a camera calibration tool](http://docs.ope
 
 ## TODO
 
-* comments
 * add board size as optional program argument
 * add number of frames to use from videos as optional program argument
