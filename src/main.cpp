@@ -57,7 +57,8 @@ VideoCapture vid_cap;
 bool disp_first_frame = false;  // program argument -g
 bool interactive = false;       // program argument -i
 
-bool mirror_img = false;
+bool flip_hori = false;
+bool flip_vert = false;
 bool fix_principal_pt = false;
 bool fix_aspect_ratio = false;
 bool zero_tangent_dist = false;
@@ -84,13 +85,15 @@ vector<string> file_ext_vid;
 
 void printHelp() {
     cout << "usage:" << endl;
-    cout << "cam_intrinsics-db [-(g|i)paz] <square size in meters> [device]" << endl;
-    cout << " use '-g' for graphical output (shows original and undistorted first frame)" << endl;
-    cout << " use '-i' for *interactive* graphical output (step through all frames)" << endl;
-    cout << " additional flags:" << endl;
+    cout << "cam_intrinsics-db [-(g|i)pazhv] <square size in meters> [device]" << endl;
+    cout << " optional flags:" << endl;
+    cout << "  '-g' for graphical output (shows original and undistorted first frame)" << endl;
+    cout << "  '-i' for *interactive* graphical output (step through all frames)" << endl;
     cout << "  'p' to fix principal point during calibration" << endl;
     cout << "  'a' to fix aspect ratio during calibration" << endl;
     cout << "  'z' to assume zero tangential distortion during calibration" << endl;
+    cout << "  'h' to flip image horizontally" << endl;
+    cout << "  'v' to flip image vertically" << endl;
     cout << " optionally specify a 'device' for which calibration photos or videos exist in the 'device_data/' folder" << endl;
 }
 
@@ -246,8 +249,17 @@ bool run_calibration_with_data(vector<vector<Point2f> > pts, double *reproj_err)
 bool process_img(Mat &img, bool is_first_frame) {
     if (!img.data || img.rows == 0 || img.cols == 0) return false;  // invalid image
 
-    if (mirror_img) {
-        flip(img, img, 1);
+    if (flip_vert || flip_hori) {
+        int flip_mode;
+        if (flip_vert && !flip_hori) {
+            flip_mode = 0;
+        } else if (flip_hori && !flip_vert) {
+            flip_mode = 1;
+        } else {
+            flip_mode = -1;
+        }
+        
+        flip(img, img, flip_mode);
     }
     
     // find chessboard corners in the image
@@ -555,6 +567,10 @@ void parse_flags_arg(const char *arg) {
             fix_aspect_ratio = true;
         } else if (c == 'z') {
             zero_tangent_dist = true;
+        } else if (c == 'h') {
+            flip_hori = true;
+        } else if (c == 'v') {
+            flip_vert = true;
         }
     }
 }
@@ -607,6 +623,8 @@ int main(int argc, char *argv[]) {
     cout << " fix principal point: " << fix_principal_pt << endl;
     cout << " fix aspect ratio: " << fix_aspect_ratio << endl;
     cout << " assume zero tangential distortion: " << zero_tangent_dist << endl;
+    cout << " horizontal flip: " << flip_hori << endl;
+    cout << " vertical flip: " << flip_vert << endl;
     cout << "generating camera intrinsics for ";
     
     if (all_devices) {

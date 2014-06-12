@@ -17,12 +17,18 @@ OpenCV also contains [source code for a camera calibration tool](http://docs.ope
 The program can be called in the following way:
 
 ```
-cam_intrinsics-db [-g|i] <square size in meters> [device]
+cam_intrinsics-db [-(g|i)pazhv] <square size in meters> [device]
 ```
 
 * `square size in meters` is necessary and specifies the side length of the squares in the chessboard grid that was used for calibration
-* use `-g` for graphical output (shows original and undistorted first frame)
-* use `-i` for *interactive* graphical output (step through all frames)
+* optional flags:
+ * `-g` for graphical output (shows original and undistorted first frame)
+ * `-i` for *interactive* graphical output (step through all frames)
+ * 'p' to fix principal point during calibration
+ * 'a' to fix aspect ratio during calibration
+ * 'z' to assume zero tangential distortion during calibration
+ * 'h' to flip image horizontally
+ * 'v' to flip image vertically
 * optionally specify a 'device' for which calibration photos or videos exist in the 'device_data/' folder; if no device is specified, the program will calibrate *all* devices in the *device_data* folder (with the same square size setting)
 
 ## Calibration data
