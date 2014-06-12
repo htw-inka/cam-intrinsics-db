@@ -22,8 +22,8 @@ cam_intrinsics-db [-(g|i)pazhv] <square size in meters> [device]
 
 * `square size in meters` is necessary and specifies the side length of the squares in the chessboard grid that was used for calibration
 * optional flags:
- * `-g` for graphical output (shows original and undistorted first frame)
- * `-i` for *interactive* graphical output (step through all frames)
+ * 'g' for graphical output (shows original and undistorted first frame)
+ * 'i' for *interactive* graphical output (step through all frames)
  * 'p' to fix principal point during calibration
  * 'a' to fix aspect ratio during calibration
  * 'z' to assume zero tangential distortion during calibration
