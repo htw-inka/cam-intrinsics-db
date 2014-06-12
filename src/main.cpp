@@ -57,6 +57,11 @@ VideoCapture vid_cap;
 bool disp_first_frame = false;  // program argument -g
 bool interactive = false;       // program argument -i
 
+bool mirror_img = false;
+bool fix_principal_pt = false;
+bool fix_aspect_ratio = false;
+bool zero_tangent_dist = false;
+
 Size board_size(9,6);   // number of *inner* corners per a chessboard row and column
 
 bool status_ok = true;  // program will shutdown when this is false
@@ -79,9 +84,13 @@ vector<string> file_ext_vid;
 
 void printHelp() {
     cout << "usage:" << endl;
-    cout << "cam_intrinsics-db [-g|i] <square size in meters> [device]" << endl;
+    cout << "cam_intrinsics-db [-(g|i)paz] <square size in meters> [device]" << endl;
     cout << " use '-g' for graphical output (shows original and undistorted first frame)" << endl;
     cout << " use '-i' for *interactive* graphical output (step through all frames)" << endl;
+    cout << " additional flags:" << endl;
+    cout << "  'p' to fix principal point during calibration" << endl;
+    cout << "  'a' to fix aspect ratio during calibration" << endl;
+    cout << "  'z' to assume zero tangential distortion during calibration" << endl;
     cout << " optionally specify a 'device' for which calibration photos or videos exist in the 'device_data/' folder" << endl;
 }
 
@@ -215,12 +224,14 @@ bool run_calibration_with_data(vector<vector<Point2f> > pts, double *reproj_err)
     obj_pts.resize(img_pts.size(), std_obj_pts);
     
     //Find intrinsic and extrinsic camera parameters
-    *reproj_err = calibrateCamera(obj_pts, img_pts, img_size, cam_mat,
-                                  dist_mat, rvecs, tvecs,
-                                  /*CV_CALIB_FIX_PRINCIPAL_POINT
-                                  |*/ CV_CALIB_FIX_ASPECT_RATIO
-                                  | CV_CALIB_FIX_K4
-                                  | CV_CALIB_FIX_K5);
+    int calib_flags = CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5;
+    if (fix_aspect_ratio) calib_flags |= CV_CALIB_FIX_ASPECT_RATIO;
+    if (fix_principal_pt) calib_flags |= CV_CALIB_FIX_PRINCIPAL_POINT;
+    if (zero_tangent_dist) calib_flags |= CV_CALIB_ZERO_TANGENT_DIST;
+    *reproj_err = calibrateCamera(obj_pts, img_pts, img_size,
+                                  cam_mat, dist_mat,
+                                  rvecs, tvecs,
+                                  calib_flags);
     
     // matrices must be ok
     return checkRange(cam_mat) && checkRange(dist_mat);
@@ -235,6 +246,10 @@ bool run_calibration_with_data(vector<vector<Point2f> > pts, double *reproj_err)
 bool process_img(Mat &img, bool is_first_frame) {
     if (!img.data || img.rows == 0 || img.cols == 0) return false;  // invalid image
 
+    if (mirror_img) {
+        flip(img, img, 1);
+    }
+    
     // find chessboard corners in the image
     if (find_corners_in_img(img, is_first_frame)) {
         if ((disp_first_frame && is_first_frame) || interactive) {
@@ -520,6 +535,30 @@ void init() {
     file_ext_vid.push_back("mov");
 }
 
+/**
+ * Parse flags in <arg>.
+ */
+void parse_flags_arg(const char *arg) {
+    const int len = strlen(arg);
+    assert(len > 1);
+    
+    for (int i = 1; i < len; ++i) {
+        char c = arg[i];
+        
+        if (c == 'g' && !interactive) {
+            disp_first_frame = true;
+        } else if (c == 'i' && !disp_first_frame) {
+            interactive = true;
+        } else if (c == 'p') {
+            fix_principal_pt = true;
+        } else if (c == 'a') {
+            fix_aspect_ratio = true;
+        } else if (c == 'z') {
+            zero_tangent_dist = true;
+        }
+    }
+}
+
 /** MAIN FUNCTION **/
 
 int main(int argc, char *argv[]) {
@@ -531,12 +570,8 @@ int main(int argc, char *argv[]) {
     int params_idx = 1;
     
     // parse optional flags
-    if (strlen(argv[params_idx]) == 2 && argv[params_idx][0] == '-') {
-        if (argv[params_idx][1] == 'g') {
-            disp_first_frame = true;
-        } else if (argv[params_idx][1] == 'i') {
-            interactive = true;
-        }
+    if (strlen(argv[params_idx]) > 1 && argv[params_idx][0] == '-') {
+        parse_flags_arg(argv[params_idx]);
         
         if (argc <= params_idx + 1) {   // we require at least 1 more argument
             printHelp();
@@ -568,6 +603,10 @@ int main(int argc, char *argv[]) {
     
     // run the routines
     cout << "using square size of " << square_size << " meters" << endl;
+    cout << "calibration options:" << endl;
+    cout << " fix principal point: " << fix_principal_pt << endl;
+    cout << " fix aspect ratio: " << fix_aspect_ratio << endl;
+    cout << " assume zero tangential distortion: " << zero_tangent_dist << endl;
     cout << "generating camera intrinsics for ";
     
     if (all_devices) {

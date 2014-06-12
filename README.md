@@ -37,7 +37,20 @@ The *database* folder contains an XML file for each camera that was calibrated w
 * `Distortion_Coefficients` contains the 5 distortion coefficients
 * `Avg_Reprojection_Error` is the reported average reprojection error that resulted from the above calibration information
 
-These XML files can be loaded and used in your (AR) program.
+These XML files can be loaded and used in your (AR) program, like for example with OpenCV's [`FileStorage`](http://docs.opencv.org/doc/tutorials/core/file_input_output_with_xml_yml/file_input_output_with_xml_yml.html):
+
+```
+cv::FileStorage fs;
+cv::Mat camMat;
+cv::Mat distCoeff;
+
+fs.open(path_to_xml_file, cv::FileStorage::READ);
+    
+if (fs.isOpened()) {
+    fs["Camera_Matrix"]  >> camMat;
+    fs["Distortion_Coefficients"]  >> distCoeff;
+}
+```
 
 ## Dependencies
 
@@ -66,7 +79,6 @@ Also note, that your calibration data set should be smaller than 50MiB.
 * add the following as optional program arguments:
  * board size
  * number of frames to use from videos
- * calibrateCamera parameters
 
 ## LICENSE
 
