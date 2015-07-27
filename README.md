@@ -17,7 +17,7 @@ OpenCV also contains [source code for a camera calibration tool](http://docs.ope
 The program can be called in the following way:
 
 ```
-cam_intrinsics-db [-(g|i)pazhv] <square size in meters> [device]
+./cam-intrinsics-db [-(g|i)pazhv] <square size in meters> [device]
 ```
 
 * `square size in meters` is necessary and specifies the side length of the squares in the chessboard grid that was used for calibration
